@@ -1,12 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { getHomeSections, searchMovies, getMovieDetail, parseEpisodes, enrichVodDetail, fetchDoubanData } from './services/vodService';
-import VideoPlayer from './components/VideoPlayer';
-import MovieInfoCard from './components/MovieInfoCard';
-import GeminiChat from './components/GeminiChat';
-import ImageWithFallback from './components/ImageWithFallback';
-import { VodItem, VodDetail, Episode } from './types';
+// Imports removed, using window globals
 
-// Icons
 const NavIcons = {
     Home: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>,
     Search: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>,
@@ -30,14 +24,12 @@ const NavBar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (t
         <nav className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/5 transition-all duration-300">
             <div className="container mx-auto px-4 max-w-[1400px]">
                 <div className="flex items-center justify-between h-16">
-                    {/* Logo */}
                     <div className="flex items-center gap-2 cursor-pointer" onClick={() => onTabChange('home')}>
                         <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand to-cyan-400">
                             CineStream
                         </span>
                     </div>
 
-                    {/* Desktop Nav */}
                     <div className="hidden lg:flex items-center gap-1">
                         {navItems.map(item => (
                             <button
@@ -55,7 +47,6 @@ const NavBar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (t
                         ))}
                     </div>
 
-                    {/* Mobile Nav (Scrollable) */}
                     <div className="lg:hidden flex items-center gap-4 overflow-x-auto no-scrollbar w-full ml-4 mask-linear-fade">
                          {navItems.map(item => (
                             <button
@@ -78,14 +69,17 @@ const NavBar = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (t
     );
 };
 
-const HeroBanner = ({ items, onPlay }: { items: VodItem[], onPlay: (item: VodItem) => void }) => {
+const HeroBanner = ({ items, onPlay }: { items: any[], onPlay: (item: any) => void }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [detail, setDetail] = useState<any>(null);
     const [isFading, setIsFading] = useState(false);
 
     const currentItem = items[currentIndex];
+    
+    // Resolve globals
+    const ImageWithFallback = (window as any).ImageWithFallback;
+    const fetchDoubanData = (window as any).fetchDoubanData;
 
-    // Auto rotate
     useEffect(() => {
         if (items.length === 0) return;
         const timer = setInterval(() => {
@@ -93,19 +87,14 @@ const HeroBanner = ({ items, onPlay }: { items: VodItem[], onPlay: (item: VodIte
             setTimeout(() => {
                 setCurrentIndex((prev) => (prev + 1) % items.length);
                 setIsFading(false);
-            }, 600); // Wait for fade out
+            }, 600); 
         }, 8000);
         return () => clearInterval(timer);
     }, [items.length]);
 
-    // Data Fetching
     useEffect(() => {
         if (!currentItem) return;
-        
         let cancelled = false;
-        
-        // STRICT RESET: Clear detail immediately when item changes. 
-        // This ensures stale data (wallpaper/synopsis from previous movie) is never shown with the new title.
         setDetail(null);
 
         const loadDetail = async () => {
@@ -115,7 +104,6 @@ const HeroBanner = ({ items, onPlay }: { items: VodItem[], onPlay: (item: VodIte
                     setDetail(data);
                 }
             } catch (e) {
-                // ignore
             }
         };
 
@@ -126,13 +114,11 @@ const HeroBanner = ({ items, onPlay }: { items: VodItem[], onPlay: (item: VodIte
 
     if (!currentItem) return null;
 
-    // Use wallpaper (horizontal/stage photo) if available, then pic (high res poster), then item.vod_pic
     const displayPoster = detail?.wallpaper || detail?.pic || currentItem.vod_pic;
     const posterUrl = detail?.pic || currentItem.vod_pic;
 
     return (
         <div className="relative w-full h-[40vh] md:h-[50vh] lg:h-[55vh] rounded-3xl overflow-hidden mb-12 shadow-2xl border border-white/5 group mt-8">
-            {/* Background */}
             <div className={`absolute inset-0 transition-opacity duration-700 ${isFading ? 'opacity-0' : 'opacity-100'}`}>
                 <ImageWithFallback 
                     src={displayPoster}
@@ -143,11 +129,9 @@ const HeroBanner = ({ items, onPlay }: { items: VodItem[], onPlay: (item: VodIte
                 <div className="absolute inset-0 bg-gradient-to-r from-[#020617] via-[#020617]/70 to-transparent"></div>
             </div>
 
-            {/* Content */}
             <div className={`absolute inset-0 z-10 flex items-end md:items-center justify-start p-6 md:p-12 lg:p-16 transition-opacity duration-700 ${isFading ? 'opacity-0' : 'opacity-100'}`}>
                 <div className="flex items-center gap-8 lg:gap-12 w-full max-w-6xl mx-auto">
                     
-                    {/* Small Poster (Hidden on mobile) */}
                     <div className="hidden md:block w-48 lg:w-60 flex-shrink-0 aspect-[2/3] rounded-xl overflow-hidden shadow-2xl border-2 border-white/10 transform -rotate-2 hover:rotate-0 transition-all duration-500 z-20 bg-gray-900">
                          <ImageWithFallback 
                             src={posterUrl}
@@ -156,7 +140,6 @@ const HeroBanner = ({ items, onPlay }: { items: VodItem[], onPlay: (item: VodIte
                         />
                     </div>
 
-                    {/* Text Content */}
                     <div className="flex-1 flex flex-col gap-4 md:gap-6 pb-8 md:pb-0 items-start">
                         <div className="flex items-center gap-3">
                             <span className="bg-brand text-black text-xs font-bold px-2 py-0.5 rounded shadow-lg shadow-brand/20">Featured</span>
@@ -188,7 +171,6 @@ const HeroBanner = ({ items, onPlay }: { items: VodItem[], onPlay: (item: VodIte
                 </div>
             </div>
 
-            {/* Indicators */}
             <div className="absolute bottom-6 right-6 flex gap-2 z-20">
                 {items.map((_, idx) => (
                     <button
@@ -210,12 +192,13 @@ const HeroBanner = ({ items, onPlay }: { items: VodItem[], onPlay: (item: VodIte
 
 const HorizontalSection = ({ title, items, id, onItemClick, setRef }: { 
     title: string, 
-    items: VodItem[], 
+    items: any[], 
     id: string, 
-    onItemClick: (item: VodItem) => void,
+    onItemClick: (item: any) => void,
     setRef: (el: HTMLDivElement | null) => void 
 }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
+    const ImageWithFallback = (window as any).ImageWithFallback;
 
     const scroll = (direction: 'left' | 'right') => {
         if (scrollRef.current) {
@@ -277,11 +260,18 @@ const HorizontalSection = ({ title, items, id, onItemClick, setRef }: {
 };
 
 const App: React.FC = () => {
+  // Resolve Globals
+  const { getHomeSections, searchMovies, getMovieDetail, parseEpisodes, enrichVodDetail, fetchDoubanData } = (window as any);
+  const VideoPlayer = (window as any).VideoPlayer;
+  const MovieInfoCard = (window as any).MovieInfoCard;
+  const GeminiChat = (window as any).GeminiChat;
+  const ImageWithFallback = (window as any).ImageWithFallback;
+
   const [loading, setLoading] = useState(false);
-  const [searchResults, setSearchResults] = useState<VodItem[]>([]);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
-  const [currentMovie, setCurrentMovie] = useState<VodDetail | null>(null);
-  const [episodes, setEpisodes] = useState<Episode[]>([]);
+  const [currentMovie, setCurrentMovie] = useState<any | null>(null);
+  const [episodes, setEpisodes] = useState<any[]>([]);
   const [currentEpisodeIndex, setCurrentEpisodeIndex] = useState(-1);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSidePanel, setShowSidePanel] = useState(true);
@@ -289,18 +279,16 @@ const App: React.FC = () => {
   const resultsRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
-  // Home Page Sections State
   const [homeSections, setHomeSections] = useState<{
-      movies: VodItem[];
-      series: VodItem[];
-      shortDrama: VodItem[];
-      anime: VodItem[];
-      variety: VodItem[];
+      movies: any[];
+      series: any[];
+      shortDrama: any[];
+      anime: any[];
+      variety: any[];
   }>({ movies: [], series: [], shortDrama: [], anime: [], variety: [] });
 
-  const [heroItems, setHeroItems] = useState<VodItem[]>([]);
+  const [heroItems, setHeroItems] = useState<any[]>([]);
 
-  // Initial load
   useEffect(() => {
       const fetchInitial = async () => {
            setLoading(true);
@@ -308,7 +296,6 @@ const App: React.FC = () => {
                const sections = await getHomeSections();
                setHomeSections(sections);
                
-               // Aggregate items from all sections for Hero Carousel
                const allItems = [
                    ...sections.movies,
                    ...sections.series,
@@ -316,7 +303,6 @@ const App: React.FC = () => {
                    ...sections.variety
                ];
                
-               // Randomly shuffle and pick 10 unique items
                const shuffled = allItems.sort(() => 0.5 - Math.random());
                const selectedHeroes = shuffled.slice(0, 10);
                
@@ -342,7 +328,7 @@ const App: React.FC = () => {
       
       try {
           const data = await searchMovies(query);
-          setSearchResults((data.list || []) as VodItem[]);
+          setSearchResults((data.list || []) as any[]);
           setTimeout(() => {
               if (resultsRef.current) {
                   resultsRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -360,34 +346,24 @@ const App: React.FC = () => {
       triggerSearch(searchQuery);
   };
 
-  // Optimized click handler with Smart Matching
-  const handleItemClick = async (item: VodItem) => {
+  const handleItemClick = async (item: any) => {
       if (item.source === 'douban') {
           setLoading(true);
           try {
-              // 1. Fetch Reference Data from Douban (to get Director/Actor/Year)
               const doubanDetail = await fetchDoubanData(item.vod_name, item.vod_id);
-              
-              // 2. Search CMS
               const searchRes = await searchMovies(item.vod_name);
               
               if (searchRes.list && searchRes.list.length > 0) {
-                  let list = searchRes.list as VodItem[];
-                  
-                  // Filter candidates that vaguely match the name
+                  let list = searchRes.list as any[];
                   let candidates = list.filter(c => 
                       c.vod_name.includes(item.vod_name) || item.vod_name.includes(c.vod_name)
                   );
 
                   if (candidates.length === 0) candidates = list;
 
-                  let bestMatch = candidates[0]; // Default to first result
+                  let bestMatch = candidates[0]; 
 
-                  // 3. Smart Matching: Compare CMS candidates against Douban metadata
                   if (doubanDetail && candidates.length > 1) {
-                      // We need to fetch details for the top candidates to check Director/Actor
-                      // because search results usually lack this info.
-                      // Limit to top 5 to avoid performance hit.
                       const detailedCandidates = await Promise.all(
                          candidates.slice(0, 5).map(c => getMovieDetail(c.vod_id as number))
                       );
@@ -397,11 +373,7 @@ const App: React.FC = () => {
                       for (const cand of detailedCandidates) {
                           if (!cand) continue;
                           let score = 0;
-
-                          // Base Score: Exact name match
                           if (cand.vod_name === item.vod_name) score += 10;
-
-                          // Factor 1: Year Match (+/- 1 year tolerance)
                           if (doubanDetail.year && cand.vod_year) {
                               const dYear = parseInt(doubanDetail.year);
                               const cYear = parseInt(cand.vod_year);
@@ -409,20 +381,14 @@ const App: React.FC = () => {
                                   if (Math.abs(dYear - cYear) <= 1) score += 5;
                               }
                           }
-
-                          // Factor 2: Director Match
                           if (doubanDetail.director && cand.vod_director) {
                               const dDirs = doubanDetail.director.split('/');
-                              // If any director name overlaps
-                              if (dDirs.some(d => cand.vod_director.includes(d.trim()))) score += 10;
+                              if (dDirs.some((d: string) => cand.vod_director.includes(d.trim()))) score += 10;
                           }
-
-                          // Factor 3: Actor Match
                           if (doubanDetail.actor && cand.vod_actor) {
                               const dActors = doubanDetail.actor.split('/');
                               const cActors = cand.vod_actor;
-                              // Count overlap
-                              const overlapCount = dActors.filter(a => cActors.includes(a.trim())).length;
+                              const overlapCount = dActors.filter((a: string) => cActors.includes(a.trim())).length;
                               score += overlapCount * 3;
                           }
 
@@ -432,24 +398,19 @@ const App: React.FC = () => {
                           }
                       }
                   } else {
-                      // Fallback: Just try to match exact name if we didn't fetch details
                       const exactMatch = list.find(v => v.vod_name === item.vod_name);
                       if (exactMatch) bestMatch = exactMatch;
                   }
                   
-                  // Play the best match
                   await handleSelectMovie(bestMatch.vod_id as number);
                   
-                  // Update UI with better metadata from Douban if available
-                  setCurrentMovie(prev => {
+                  setCurrentMovie((prev: any) => {
                       if (prev) {
-                          // Merge Douban info (high qual poster, score, etc) onto the playing movie
                           return {
                               ...prev,
                               vod_pic: doubanDetail?.pic || item.vod_pic || prev.vod_pic,
                               vod_score: doubanDetail?.score || item.vod_score || prev.vod_score,
                               vod_year: doubanDetail?.year || item.vod_year || prev.vod_year,
-                              // If we fetched rich data, these might be available too:
                               vod_director: doubanDetail?.director || prev.vod_director,
                               vod_actor: doubanDetail?.actor || prev.vod_actor,
                           };
@@ -458,7 +419,6 @@ const App: React.FC = () => {
                   });
 
               } else {
-                  // No results found in CMS
                   triggerSearch(item.vod_name);
               }
           } catch (e) {
@@ -484,9 +444,9 @@ const App: React.FC = () => {
                   setEpisodes(parsedEps);
                   setCurrentEpisodeIndex(0);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
-                  enrichVodDetail(detail).then(updates => {
+                  enrichVodDetail(detail).then((updates: any) => {
                       if (updates) {
-                          setCurrentMovie(prev => {
+                          setCurrentMovie((prev: any) => {
                               if (prev && prev.vod_id === detail.vod_id) return { ...prev, ...updates };
                               return prev;
                           });
@@ -519,9 +479,7 @@ const App: React.FC = () => {
       if (tab === 'home') {
           window.scrollTo({ top: 0, behavior: 'smooth' });
       } else if (tab === 'search') {
-          // just switch tab, content rendered by condition below
       } else {
-          // Scroll to section
           setTimeout(() => {
             const el = sectionRefs.current[tab];
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -530,7 +488,6 @@ const App: React.FC = () => {
       }
   };
 
-  // Callbacks for Player
   const handleEpisodeEnd = useCallback(() => {
     if(currentEpisodeIndex < episodes.length - 1) setCurrentEpisodeIndex(prev => prev + 1);
   }, [currentEpisodeIndex, episodes.length]);
@@ -543,7 +500,6 @@ const App: React.FC = () => {
       <div className="relative min-h-screen pb-20 overflow-x-hidden font-sans pt-16">
           <NavBar activeTab={activeTab} onTabChange={handleTabChange} />
 
-          {/* Global Loading Overlay for Play Click */}
           {loading && currentMovie === null && !hasSearched && (
                <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center animate-fade-in">
                    <div className="animate-spin h-12 w-12 border-4 border-brand border-t-transparent rounded-full mb-4"></div>
@@ -597,7 +553,7 @@ const App: React.FC = () => {
                               </div>
                           )}
                       </div>
-                      <MovieInfoCard movie={currentMovie} onSearch={(keyword) => triggerSearch(keyword)} />
+                      <MovieInfoCard movie={currentMovie} onSearch={(keyword: string) => triggerSearch(keyword)} />
                   </section>
               )}
 
@@ -682,4 +638,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App;
+(window as any).App = App;

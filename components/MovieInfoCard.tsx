@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { VodDetail } from '../types';
-import ImageWithFallback from './ImageWithFallback';
+// import { VodDetail } from '../types.ts';
+// import ImageWithFallback from './ImageWithFallback.tsx';
 
 interface MovieInfoCardProps {
-  movie: VodDetail;
+  movie: any;
   onSearch?: (keyword: string) => void;
 }
 
@@ -13,8 +13,9 @@ const MovieInfoCard: React.FC<MovieInfoCardProps> = ({ movie, onSearch }) => {
   const rawContent = movie.vod_content ? movie.vod_content.replace(/<[^>]+>/g, '') : '暂无简介';
   const isLongContent = rawContent.length > 150;
   const displayContent = expanded ? rawContent : rawContent.slice(0, 150) + (isLongContent ? '...' : '');
+  
+  const ImageWithFallback = (window as any).ImageWithFallback;
 
-  // Helper for metadata grid items
   const MetaItem = ({ label, value }: { label: string, value?: string }) => {
       if (!value) return null;
       return (
@@ -27,7 +28,6 @@ const MovieInfoCard: React.FC<MovieInfoCardProps> = ({ movie, onSearch }) => {
 
   return (
       <div className="relative w-full rounded-2xl overflow-hidden bg-[#121212] border border-white/5 shadow-2xl mt-6 font-sans mb-12">
-          {/* Background blurred poster */}
           <div className="absolute inset-0 z-0">
               <ImageWithFallback 
                   src={movie.vod_pic || ''} 
@@ -40,7 +40,6 @@ const MovieInfoCard: React.FC<MovieInfoCardProps> = ({ movie, onSearch }) => {
           <div className="relative z-10 p-6 md:p-8 flex flex-col gap-8">
               
               <div className="flex flex-col md:flex-row gap-8">
-                  {/* Poster Image */}
                   <div className="flex-shrink-0 mx-auto md:mx-0">
                       <div className="w-[200px] h-[300px] rounded-lg overflow-hidden shadow-[0_0_20px_rgba(0,0,0,0.5)] border border-white/10 group bg-gray-800">
                           <ImageWithFallback 
@@ -51,7 +50,6 @@ const MovieInfoCard: React.FC<MovieInfoCardProps> = ({ movie, onSearch }) => {
                       </div>
                   </div>
 
-                  {/* Info Content */}
                   <div className="flex-1 text-gray-200">
                       <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 flex items-center gap-4 flex-wrap">
                           {movie.vod_name}
@@ -62,7 +60,6 @@ const MovieInfoCard: React.FC<MovieInfoCardProps> = ({ movie, onSearch }) => {
                           )}
                       </h2>
 
-                      {/* Tags */}
                       <div className="flex flex-wrap gap-2 mb-6">
                           {movie.vod_area && <span className="bg-blue-600/20 border border-blue-500/30 text-blue-300 text-xs font-medium px-2.5 py-1 rounded-full">{movie.vod_area}</span>}
                           {movie.vod_lang && <span className="bg-purple-600/20 border border-purple-500/30 text-purple-300 text-xs font-medium px-2.5 py-1 rounded-full">{movie.vod_lang}</span>}
@@ -75,7 +72,6 @@ const MovieInfoCard: React.FC<MovieInfoCardProps> = ({ movie, onSearch }) => {
                           )}
                       </div>
 
-                      {/* Detailed Metadata Grid */}
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-8 mb-6 bg-white/5 p-4 rounded-xl border border-white/5">
                           <MetaItem label="导演" value={movie.vod_director} />
                           <MetaItem label="编剧" value={movie.vod_writer} />
@@ -87,7 +83,6 @@ const MovieInfoCard: React.FC<MovieInfoCardProps> = ({ movie, onSearch }) => {
                           <MetaItem label="IMDb" value={movie.vod_imdb} />
                       </div>
 
-                      {/* Content Description */}
                       <div className="text-sm leading-relaxed text-gray-300">
                           <h3 className="text-white font-bold mb-2 text-base">剧情简介</h3>
                           <p className={`whitespace-pre-line break-words ${expanded ? '' : 'line-clamp-4'}`}>
@@ -105,12 +100,11 @@ const MovieInfoCard: React.FC<MovieInfoCardProps> = ({ movie, onSearch }) => {
                   </div>
               </div>
 
-              {/* Extended Section: Cast */}
               {movie.vod_actors_extended && movie.vod_actors_extended.length > 0 && (
                   <div className="border-t border-white/10 pt-6">
                       <h3 className="text-lg font-bold text-white mb-4">主演阵容</h3>
                       <div className="flex gap-6 overflow-x-auto pb-6 no-scrollbar">
-                          {movie.vod_actors_extended.map((actor, idx) => (
+                          {movie.vod_actors_extended.map((actor: any, idx: number) => (
                               <div key={idx} className="flex-shrink-0 w-36 text-center">
                                   <div className="w-32 h-32 mx-auto mb-3 rounded-full overflow-hidden border-2 border-white/10 shadow-lg bg-gray-800">
                                       <ImageWithFallback 
@@ -127,14 +121,13 @@ const MovieInfoCard: React.FC<MovieInfoCardProps> = ({ movie, onSearch }) => {
                   </div>
               )}
 
-              {/* Extended Section: Recommendations */}
               {movie.vod_recs && movie.vod_recs.length > 0 && (
                   <div className="border-t border-white/10 pt-6">
                       <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                           <span className="text-brand">♥</span> 猜你喜欢
                       </h3>
                       <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
-                          {movie.vod_recs.map((rec, idx) => (
+                          {movie.vod_recs.map((rec: any, idx: number) => (
                               <div 
                                 key={idx} 
                                 className="flex-shrink-0 w-40 cursor-pointer group"
@@ -166,4 +159,4 @@ const MovieInfoCard: React.FC<MovieInfoCardProps> = ({ movie, onSearch }) => {
   );
 };
 
-export default MovieInfoCard;
+(window as any).MovieInfoCard = MovieInfoCard;

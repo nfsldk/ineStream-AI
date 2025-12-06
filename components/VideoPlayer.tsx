@@ -8,7 +8,6 @@ interface VideoPlayerProps {
   onNext?: () => void;
 }
 
-// Icons for settings
 const ICONS = {
     autoPlay: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#ffffff" width="22" height="22"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>',
     skipStart: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#ffffff" width="22" height="22"><path d="M5 4h2v16H5V4zm4 1v14l11-7L9 5z"/></svg>',
@@ -36,7 +35,6 @@ const AD_PATTERNS = [
     'ts_ad', 'ad.ts', 'ad_0', 'ad_1', 'ad_2', 'xiaoshuo'
 ];
 
-// Refined Ad Filter using Buffer Strategy & Tag Filtering
 function filterAdsFromM3U8(m3u8Content: string): string {
     if (!m3u8Content) return '';
     const lines = m3u8Content.split('\n');
@@ -49,7 +47,6 @@ function filterAdsFromM3U8(m3u8Content: string): string {
         const line = lines[i].trim();
         if (!line) continue;
 
-        // 1. Standard Ad Block Detection (User requested strategy)
         if (line.includes('EXT-X-CUE-OUT') || line.includes('SCTE35') || (line.includes('DATERANGE') && line.includes('SCTE35'))) {
             inAdBlock = true;
             continue; 
@@ -59,14 +56,11 @@ function filterAdsFromM3U8(m3u8Content: string): string {
             continue; 
         }
 
-        // 2. Aggressive Discontinuity Removal
-        // Removing discontinuities helps prevent playback freezing when ad segments are removed
         if (line.includes('EXT-X-DISCONTINUITY')) {
             continue;
         }
 
         if (line.startsWith('#')) {
-            // Check for Global Tags that should not be buffered with segments
              if (line.startsWith('#EXTM3U') || 
                 line.startsWith('#EXT-X-VERSION') || 
                 line.startsWith('#EXT-X-TARGETDURATION') ||
@@ -75,26 +69,21 @@ function filterAdsFromM3U8(m3u8Content: string): string {
                 line.startsWith('#EXT-X-ENDLIST') ||
                 line.startsWith('#EXT-X-INDEPENDENT-SEGMENTS')) { 
                 
-                // Flush buffer before global tag
                 if (segmentBuffer.length > 0) {
                      filteredLines.push(...segmentBuffer);
                      segmentBuffer = [];
                 }
                 filteredLines.push(line);
             } else {
-                // Segment Metadata (EXTINF, EXT-X-KEY, etc.)
                 segmentBuffer.push(line);
             }
         } else {
-            // URL Line
             const lowerUrl = line.toLowerCase();
             const isPatternAd = AD_PATTERNS.some(p => lowerUrl.includes(p));
             
             if (inAdBlock || isPatternAd) {
-                // Drop this segment (URL + buffered metadata)
                 segmentBuffer = [];
             } else {
-                // Keep content: Flush buffer then URL
                 if (segmentBuffer.length > 0) {
                     filteredLines.push(...segmentBuffer);
                 }
@@ -103,7 +92,6 @@ function filterAdsFromM3U8(m3u8Content: string): string {
             }
         }
     }
-    // Flush trailing
     if (segmentBuffer.length > 0) filteredLines.push(...segmentBuffer);
     
     return filteredLines.join('\n');
@@ -113,11 +101,9 @@ const VideoPlayer = forwardRef<unknown, VideoPlayerProps>(({ url, poster, autopl
   const artRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
-  // Store callbacks in refs to prevent useEffect triggers on parent re-renders
   const latestOnEnded = useRef(onEnded);
   const latestOnNext = useRef(onNext);
 
-  // Update refs when props change
   useEffect(() => {
     latestOnEnded.current = onEnded;
     latestOnNext.current = onNext;
@@ -127,7 +113,6 @@ const VideoPlayer = forwardRef<unknown, VideoPlayerProps>(({ url, poster, autopl
       getInstance: () => artRef.current
   }));
 
-  // Handle Resize
   useEffect(() => {
       const observer = new ResizeObserver(() => {
           if (artRef.current) {
@@ -153,12 +138,10 @@ const VideoPlayer = forwardRef<unknown, VideoPlayerProps>(({ url, poster, autopl
       let hasSkippedHead = false;
       let isSkippingTail = false;
 
-      // Default Values matching logic
       const DEFAULT_SKIP_HEAD = 90;
       const DEFAULT_SKIP_TAIL = 120;
       const DEFAULT_AUTO_NEXT = '1';
 
-      // Initialize UI values
       let skipHead = parseInt(localStorage.getItem('art_skip_head') || String(DEFAULT_SKIP_HEAD));
       let skipTail = parseInt(localStorage.getItem('art_skip_tail') || String(DEFAULT_SKIP_TAIL));
       let autoNext = (localStorage.getItem('art_auto_next') || DEFAULT_AUTO_NEXT) !== '0'; 
@@ -330,7 +313,6 @@ const VideoPlayer = forwardRef<unknown, VideoPlayerProps>(({ url, poster, autopl
 
       artRef.current = art;
 
-      // --- P2P UI ---
       const p2pEl = document.createElement('div');
       p2pEl.className = 'p2p-stats';
       p2pEl.style.display = 'none';
@@ -381,14 +363,11 @@ const VideoPlayer = forwardRef<unknown, VideoPlayerProps>(({ url, poster, autopl
       
       art.on('destroy', () => clearInterval(speedInterval));
 
-      // Skip Logic
       art.on('video:timeupdate', function() {
-          // IMPORTANT: Read defaults here as well to match UI
           const currentSkipHead = parseInt(localStorage.getItem('art_skip_head') || String(DEFAULT_SKIP_HEAD));
           const currentSkipTail = parseInt(localStorage.getItem('art_skip_tail') || String(DEFAULT_SKIP_TAIL));
           const isAutoNext = (localStorage.getItem('art_auto_next') || DEFAULT_AUTO_NEXT) !== '0';
 
-          // Skip Intro
           if (currentSkipHead > 0 && !hasSkippedHead && art.duration > 300) {
              if (art.currentTime < currentSkipHead) {
                 art.notice.show = `已自动去除片头/广告 (${currentSkipHead}秒)`;
@@ -398,14 +377,12 @@ const VideoPlayer = forwardRef<unknown, VideoPlayerProps>(({ url, poster, autopl
              hasSkippedHead = true;
           }
 
-          // Skip Outro
           if (currentSkipTail > 0 && !isSkippingTail && art.duration > 300) {
               const rem = art.duration - art.currentTime;
               if (rem > 0 && rem <= currentSkipTail) {
                   isSkippingTail = true;
                   if (isAutoNext && latestOnNext.current) {
                       art.notice.show = '正在为您播放下一集...';
-                      // Use a timeout to give UI feedback before switching
                       setTimeout(() => { if (latestOnNext.current) latestOnNext.current(); }, 500); 
                   } else {
                       art.notice.show = '已跳过片尾';
@@ -429,7 +406,6 @@ const VideoPlayer = forwardRef<unknown, VideoPlayerProps>(({ url, poster, autopl
           if (artRef.current) artRef.current.destroy(false);
       };
       
-      // Removed onEnded and onNext from dependency array to prevent re-init
   }, [url, autoplay, poster]); 
 
   return (
@@ -505,4 +481,4 @@ const VideoPlayer = forwardRef<unknown, VideoPlayerProps>(({ url, poster, autopl
   );
 });
 
-export default VideoPlayer;
+(window as any).VideoPlayer = VideoPlayer;

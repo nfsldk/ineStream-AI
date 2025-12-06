@@ -6,7 +6,7 @@
     <meta name="referrer" content="no-referrer" />
     <title>CineStream AI - 免费高清影视 | 智能P2P加速</title>
     
-    <!-- Tailwind CSS (Keep CDN for simplicity in CSS handling, or move to npm if preferred, but CDN works fine here) -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -37,16 +37,17 @@
         }
     </script>
     
-    <!-- 运行时配置 -->
+    <!-- Runtime Config -->
     <script>
         window.GEMINI_API_KEY = ""; 
+        window.process = { env: { API_KEY: '' } };
     </script>
 
-    <!-- Player Dependencies -->
+    <!-- External Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/artplayer@5.3.0/dist/artplayer.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
-    <!-- P2P Engine -->
     <script src="https://cdn.jsdelivr.net/npm/swarmcloud-hls@latest/dist/p2p-engine.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
         body {
@@ -69,13 +70,15 @@
             overflow: hidden;
         }
     </style>
-<script type="importmap">
+
+    <script type="importmap">
 {
   "imports": {
-    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "react": "https://esm.sh/react@18.3.1",
+    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+    "@google/genai": "https://esm.sh/@google/genai@0.1.2",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
     "react/": "https://aistudiocdn.com/react@^19.2.1/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.31.0",
     "vite": "https://aistudiocdn.com/vite@^7.2.6",
     "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
   }
@@ -84,6 +87,15 @@
 </head>
 <body class="text-gray-200">
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
+
+    <!-- Application Scripts (Loaded in dependency order) -->
+    <!-- Note: We use data-type="module" to enable import statements for libraries -->
+    <script type="text/babel" data-type="module" src="/services/vodService.ts"></script>
+    <script type="text/babel" data-type="module" src="/components/ImageWithFallback.tsx"></script>
+    <script type="text/babel" data-type="module" src="/components/VideoPlayer.tsx"></script>
+    <script type="text/babel" data-type="module" src="/components/MovieInfoCard.tsx"></script>
+    <script type="text/babel" data-type="module" src="/components/GeminiChat.tsx"></script>
+    <script type="text/babel" data-type="module" src="/App.tsx"></script>
+    <script type="text/babel" data-type="module" src="/index.tsx"></script>
 </body>
 </html>

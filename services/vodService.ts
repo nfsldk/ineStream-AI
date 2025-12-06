@@ -1,12 +1,9 @@
-import { Episode, VodDetail, ApiResponse, ActorItem, RecommendationItem, VodItem } from '../types';
+// Removed imports to prevent browser fetch errors
+// import { Episode, VodDetail, ApiResponse, ActorItem, RecommendationItem, VodItem } from '../types.ts';
 
 const API_BASE = 'https://caiji.dyttzyapi.com/api.php/provide/vod';
 
-/**
- * 智能代理获取器
- * Cloudflare Pages 版本：直接使用公共代理，移除本地 PHP 代理
- */
-const fetchWithProxy = async (params: URLSearchParams): Promise<ApiResponse> => {
+const fetchWithProxy = async (params: URLSearchParams) => {
   const targetUrl = `${API_BASE}?${params.toString()}`;
   
   // Strategy 1: corsproxy.io (Primary Public Proxy)
@@ -38,11 +35,7 @@ const fetchWithProxy = async (params: URLSearchParams): Promise<ApiResponse> => 
   throw new Error('Network Error: Unable to fetch data from any proxy.');
 };
 
-/**
- * HTML 内容获取代理
- */
-const fetchHtmlWithProxy = async (url: string): Promise<string | null> => {
-    // 1. Try corsproxy.io (Direct HTML)
+const fetchHtmlWithProxy = async (url: string) => {
     try {
         const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
         const response = await fetch(proxyUrl);
@@ -50,8 +43,6 @@ const fetchHtmlWithProxy = async (url: string): Promise<string | null> => {
     } catch (e) { 
         console.warn('HTML Proxy 1 failed', e); 
     }
-  
-    // 2. Try codetabs
     try {
         const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
         const response = await fetch(proxyUrl);
@@ -59,17 +50,12 @@ const fetchHtmlWithProxy = async (url: string): Promise<string | null> => {
     } catch (e) {
         console.warn('HTML Proxy 2 failed', e);
     }
-    
     return null;
   };
 
-/**
- * Fetch Douban JSON API via Proxy
- */
-const fetchDoubanJson = async (type: string, tag: string, limit = 12): Promise<VodItem[]> => {
+const fetchDoubanJson = async (type: string, tag: string, limit = 12) => {
     const doubanUrl = `https://movie.douban.com/j/search_subjects?type=${type}&tag=${encodeURIComponent(tag)}&sort=recommend&page_limit=${limit}&page_start=0`;
     try {
-        // Fallback to public
         const publicProxy = `https://corsproxy.io/?${encodeURIComponent(doubanUrl)}`;
         const res = await fetch(publicProxy);
         if(res.ok) {
@@ -87,29 +73,22 @@ const fetchDoubanJson = async (type: string, tag: string, limit = 12): Promise<V
     return [];
 };
 
-/**
- * Fetch High-Quality Backdrop from IMDb (via Proxy)
- */
-const fetchImdbBackdrop = async (imdbId: string): Promise<string | null> => {
+const fetchImdbBackdrop = async (imdbId: string) => {
     try {
         const url = `https://www.imdb.com/title/${imdbId}/`;
         const html = await fetchHtmlWithProxy(url);
         if (!html) return null;
 
-        // Extract JSON-LD to find trailer thumbnail which is usually a high-res backdrop
         const jsonMatch = html.match(/<script type="application\/ld\+json">(.*?)<\/script>/);
         if (jsonMatch) {
             const data = JSON.parse(jsonMatch[1]);
             if (data.trailer && data.trailer.thumbnailUrl) {
-                 // Try to get max res by removing resizing parameters (e.g., _V1_QL75_UX380_CR0,0,380,562_.jpg -> _V1_.jpg)
                  return data.trailer.thumbnailUrl.replace(/_V1_.*(\.\w+)$/, '_V1_$1');
             }
         }
         
-        // Fallback: Try to find og:image, though it's often vertical
         const ogImage = html.match(/property="og:image" content="(.*?)"/);
         if (ogImage) {
-            // Check if it's the default imdb logo
             if (!ogImage[1].includes('imdb_logo')) {
                  return ogImage[1].replace(/_V1_.*(\.\w+)$/, '_V1_$1');
             }
@@ -120,28 +99,8 @@ const fetchImdbBackdrop = async (imdbId: string): Promise<string | null> => {
     return null;
 };
 
-export interface DoubanData {
-    score?: string;
-    pic?: string;
-    wallpaper?: string; 
-    year?: string;
-    content?: string;
-    director?: string;
-    actor?: string;
-    area?: string;
-    lang?: string;
-    tag?: string; 
-    writer?: string;
-    pubdate?: string;
-    episodeCount?: string;
-    duration?: string;
-    alias?: string;
-    imdb?: string;
-    recs?: RecommendationItem[];
-    actorsExtended?: ActorItem[];
-}
-
-export const fetchDoubanData = async (keyword: string, doubanId?: string | number): Promise<DoubanData | null> => {
+// Attached to window to avoid import/export
+(window as any).fetchDoubanData = async (keyword: string, doubanId?: string | number) => {
   try {
     let targetId = doubanId;
 
@@ -166,9 +125,7 @@ export const fetchDoubanData = async (keyword: string, doubanId?: string | numbe
     
     if (!html) return null;
     
-    const result: DoubanData = {};
-    
-    // Core Regex Parsing
+    const result: any = {};
     
     const scoreMatch = html.match(/property="v:average">([\d\.]+)<\/strong>/);
     if (scoreMatch) result.score = scoreMatch[1];
@@ -244,17 +201,14 @@ export const fetchDoubanData = async (keyword: string, doubanId?: string | numbe
         result.imdb = imdbMatch[1].replace(/<[^>]+>/g, '').trim();
     }
     
-    // --- Fetch IMDb Wallpaper if available ---
     if (result.imdb) {
         const imdbWallpaper = await fetchImdbBackdrop(result.imdb);
         if (imdbWallpaper) {
-            result.wallpaper = imdbWallpaper; // Override Douban wallpaper with IMDb quality
+            result.wallpaper = imdbWallpaper;
         }
     }
 
-    // --- Actors Extended (Relaxed Regex) ---
-    const actorsExtended: ActorItem[] = [];
-    // Try to find the block first
+    const actorsExtended: any[] = [];
     const celebrityBlockMatch = html.match(/<ul class="celebrities-list[^>]*>([\s\S]*?)<\/ul>/) || html.match(/id="celebrities"[\s\S]*?<ul[^>]*>([\s\S]*?)<\/ul>/);
     
     if (celebrityBlockMatch) {
@@ -263,13 +217,11 @@ export const fetchDoubanData = async (keyword: string, doubanId?: string | numbe
         items.forEach(item => {
             const nameMatch = item.match(/title="([^"]+)" class="name"/) || item.match(/class="name"[^>]*>([^<]+)</);
             const roleMatch = item.match(/class="role"[^>]*>([^<]+)</);
-            
-            // Try style background-image (Desktop) OR img src (Mobile/Old)
             const picMatch = item.match(/background-image:\s*url\(([^)]+)\)/) || item.match(/<img[^>]+src="([^"]+)"/);
             
             if (nameMatch && picMatch) {
                 let picUrl = picMatch[1].replace(/['"]/g, '');
-                if (picUrl.includes('default')) return; // Skip default avatars
+                if (picUrl.includes('default')) return; 
                 
                 actorsExtended.push({
                     name: nameMatch[1].trim(),
@@ -281,16 +233,12 @@ export const fetchDoubanData = async (keyword: string, doubanId?: string | numbe
     }
     if (actorsExtended.length > 0) result.actorsExtended = actorsExtended;
 
-    // --- Recommendations (Relaxed Regex) ---
-    const recommendations: RecommendationItem[] = [];
-    // Try desktop block
+    const recommendations: any[] = [];
     let recBlockMatch = html.match(/<div class="recommendations-bd"[\s\S]*?>([\s\S]*?)<\/div>/);
-    // Or try generic recommendation block if different layout
     if (!recBlockMatch) recBlockMatch = html.match(/id="recommendations"[\s\S]*?<div class="bd">([\s\S]*?)<\/div>/);
     
     if (recBlockMatch) {
         const block = recBlockMatch[1];
-        // Match both DL/DD structure (Desktop) and loose structure
         const dlRegex = /<dl>([\s\S]*?)<\/dl>/g;
         let dlMatch;
         while ((dlMatch = dlRegex.exec(block)) !== null) {
@@ -316,7 +264,7 @@ export const fetchDoubanData = async (keyword: string, doubanId?: string | numbe
   }
 };
 
-export const getDoubanPoster = async (keyword: string): Promise<string | null> => {
+(window as any).getDoubanPoster = async (keyword: string) => {
     const searchUrl = `https://movie.douban.com/j/subject_suggest?q=${encodeURIComponent(keyword)}`;
     try {
         const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(searchUrl)}`;
@@ -324,7 +272,6 @@ export const getDoubanPoster = async (keyword: string): Promise<string | null> =
         if (res.ok) {
             const data = await res.json();
             if (Array.isArray(data) && data.length > 0 && data[0].img) {
-                // Ensure we get a high-quality image
                 return data[0].img.replace(/s_ratio_poster|m(?=\/public)/, 'l');
             }
         }
@@ -345,7 +292,7 @@ export const getDoubanPoster = async (keyword: string): Promise<string | null> =
     return null;
 };
 
-export const parseEpisodes = (urlStr: string, fromStr: string): Episode[] => {
+(window as any).parseEpisodes = (urlStr: string, fromStr: string) => {
   if (!urlStr || !fromStr) return [];
   const fromArray = fromStr.split('$$$');
   const urlArray = urlStr.split('$$$');
@@ -357,7 +304,7 @@ export const parseEpisodes = (urlStr: string, fromStr: string): Episode[] => {
   const m3u8Sources = sources.filter(s => s.code.includes('m3u8') || s.url.includes('.m3u8'));
   const selectedSource = m3u8Sources.length > 0 ? m3u8Sources[0] : sources[0];
   if (!selectedSource) return [];
-  const episodes: Episode[] = [];
+  const episodes: any[] = [];
   const lines = selectedSource.url.split('#');
   lines.forEach((line, idx) => {
       const parts = line.split('$');
@@ -372,7 +319,7 @@ export const parseEpisodes = (urlStr: string, fromStr: string): Episode[] => {
   return episodes;
 };
 
-export const searchMovies = async (keyword: string, page = 1): Promise<ApiResponse> => {
+(window as any).searchMovies = async (keyword: string, page = 1) => {
   const params = new URLSearchParams({
       ac: 'list',
       wd: keyword,
@@ -382,7 +329,7 @@ export const searchMovies = async (keyword: string, page = 1): Promise<ApiRespon
   return await fetchWithProxy(params);
 };
 
-export const getMovieDetail = async (id: number): Promise<VodDetail | null> => {
+(window as any).getMovieDetail = async (id: number) => {
   const params = new URLSearchParams({
       ac: 'detail',
       ids: id.toString(),
@@ -390,17 +337,17 @@ export const getMovieDetail = async (id: number): Promise<VodDetail | null> => {
   });
   const data = await fetchWithProxy(params);
   if (data.list && data.list.length > 0) {
-      return data.list[0] as VodDetail;
+      return data.list[0];
   }
   return null;
 };
 
-export const enrichVodDetail = async (detail: VodDetail): Promise<Partial<VodDetail> | null> => {
+(window as any).enrichVodDetail = async (detail: any) => {
     const potentialId = (detail as any).vod_douban_id;
     try {
-        const doubanData = await fetchDoubanData(detail.vod_name, potentialId);
+        const doubanData = await (window as any).fetchDoubanData(detail.vod_name, potentialId);
         if (doubanData) {
-            const updates: Partial<VodDetail> = {};
+            const updates: any = {};
             if (doubanData.score) {
                 updates.vod_douban_score = doubanData.score;
                 updates.vod_score = doubanData.score;
@@ -433,7 +380,7 @@ export const enrichVodDetail = async (detail: VodDetail): Promise<Partial<VodDet
     return null;
 }
 
-export const getHomeSections = async () => {
+(window as any).getHomeSections = async () => {
     const [movies, series, shortDrama, anime, variety] = await Promise.all([
         fetchDoubanJson('movie', '热门', 16),
         fetchDoubanJson('tv', '热门', 16),

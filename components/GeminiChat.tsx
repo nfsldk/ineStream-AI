@@ -1,23 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { VodDetail, ChatMessage } from '../types';
+// import { VodDetail, ChatMessage } from '../types.ts';
 
 interface GeminiChatProps {
-  currentMovie: VodDetail | null;
+  currentMovie: any | null;
 }
 
 const GeminiChat: React.FC<GeminiChatProps> = ({ currentMovie }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([{ role: 'model', text: '你好！我是你的观影 AI 助手。' }]);
+  const [messages, setMessages] = useState<any[]>([{ role: 'model', text: '你好！我是你的观影 AI 助手。' }]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // 安全地获取 API Key
   const getApiKey = () => {
       try {
-          // 优先读取 window 配置 (index.html)，其次读取构建时环境变量
-          return (window as any).GEMINI_API_KEY || process.env.API_KEY || '';
+          return (window as any).GEMINI_API_KEY || (window.process?.env?.API_KEY) || '';
       } catch (e) {
           return '';
       }
@@ -25,14 +23,12 @@ const GeminiChat: React.FC<GeminiChatProps> = ({ currentMovie }) => {
 
   const apiKey = getApiKey();
 
-  // 监听滚动
   useEffect(() => {
       if (isOpen && messagesEndRef.current) {
           messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
       }
   }, [messages, isOpen]);
 
-  // 如果没有 API Key，直接隐藏组件，不渲染任何内容
   if (!apiKey) {
       return null;
   }
@@ -133,4 +129,4 @@ const GeminiChat: React.FC<GeminiChatProps> = ({ currentMovie }) => {
   );
 };
 
-export default GeminiChat;
+(window as any).GeminiChat = GeminiChat;
