@@ -13,11 +13,29 @@ const GeminiChat: React.FC<GeminiChatProps> = ({ currentMovie }) => {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // 安全地获取 API Key
+  const getApiKey = () => {
+      try {
+          // 优先读取 window 配置 (index.html)，其次读取构建时环境变量
+          return (window as any).GEMINI_API_KEY || process.env.API_KEY || '';
+      } catch (e) {
+          return '';
+      }
+  };
+
+  const apiKey = getApiKey();
+
+  // 监听滚动
   useEffect(() => {
       if (isOpen && messagesEndRef.current) {
           messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
       }
   }, [messages, isOpen]);
+
+  // 如果没有 API Key，直接隐藏组件，不渲染任何内容
+  if (!apiKey) {
+      return null;
+  }
 
   const handleSend = async () => {
       if (!input.trim() || isLoading) return;
@@ -26,9 +44,8 @@ const GeminiChat: React.FC<GeminiChatProps> = ({ currentMovie }) => {
       setMessages(prev => [...prev, { role: 'user', text: userText }]);
       setIsLoading(true);
 
-      const apiKey = process.env.API_KEY;
       if (!apiKey) {
-           setMessages(prev => [...prev, { role: 'model', text: "请配置 API Key 以使用此功能。" }]);
+           setMessages(prev => [...prev, { role: 'model', text: "未配置 API Key。" }]);
            setIsLoading(false);
            return;
       }
@@ -62,7 +79,7 @@ const GeminiChat: React.FC<GeminiChatProps> = ({ currentMovie }) => {
           setMessages(prev => [...prev, { role: 'model', text: reply }]);
       } catch (error) {
           console.error("AI Error", error);
-          setMessages(prev => [...prev, { role: 'model', text: "AI 服务暂时不可用。" }]);
+          setMessages(prev => [...prev, { role: 'model', text: "AI 服务暂时不可用 (Key 可能无效)。" }]);
       } finally {
           setIsLoading(false);
       }
