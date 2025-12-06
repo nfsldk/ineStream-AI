@@ -4,31 +4,12 @@ const API_BASE = 'https://caiji.dyttzyapi.com/api.php/provide/vod';
 
 /**
  * 智能代理获取器
- * 优先尝试本地 PHP 代理，如果失败则回退到公共代理
+ * Cloudflare Pages 版本：直接使用公共代理，移除本地 PHP 代理
  */
 const fetchWithProxy = async (params: URLSearchParams): Promise<ApiResponse> => {
   const targetUrl = `${API_BASE}?${params.toString()}`;
   
-  // Strategy 1: Local PHP Proxy (Most stable for PHP hosts)
-  try {
-      // 检查当前路径是否包含 proxy.php
-      const localProxy = 'proxy.php'; 
-      const proxyUrl = `${localProxy}?url=${encodeURIComponent(targetUrl)}`;
-      const response = await fetch(proxyUrl);
-      
-      // 如果本地代理返回 HTML (通常是 404 页) 或 状态不对，则抛出异常尝试下一个策略
-      const contentType = response.headers.get('content-type');
-      if (response.ok && contentType && contentType.includes('application/json')) {
-           const data = await response.json();
-           if (data && (data.code === 1 || Array.isArray(data.list))) {
-               return data;
-           }
-      }
-  } catch (e) {
-      console.warn('Local PHP proxy failed or not present, trying backups...', e);
-  }
-
-  // Strategy 2: corsproxy.io
+  // Strategy 1: corsproxy.io (Primary Public Proxy)
   try {
       const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
       const response = await fetch(proxyUrl);
@@ -42,7 +23,7 @@ const fetchWithProxy = async (params: URLSearchParams): Promise<ApiResponse> => 
       console.warn('Primary public proxy failed', e);
   }
 
-  // Strategy 3: allorigins
+  // Strategy 2: allorigins (Fallback)
   try {
       const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}&t=${Date.now()}`;
       const response = await fetch(proxyUrl);
@@ -61,31 +42,22 @@ const fetchWithProxy = async (params: URLSearchParams): Promise<ApiResponse> => 
  * HTML 内容获取代理
  */
 const fetchHtmlWithProxy = async (url: string): Promise<string | null> => {
-    // 1. Try Local PHP Proxy
-    try {
-        const proxyUrl = `proxy.php?url=${encodeURIComponent(url)}`;
-        const response = await fetch(proxyUrl);
-        if (response.ok) return await response.text();
-    } catch (e) { 
-        console.warn('Local HTML Proxy failed', e); 
-    }
-
-    // 2. Try corsproxy.io (Direct HTML)
+    // 1. Try corsproxy.io (Direct HTML)
     try {
         const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
         const response = await fetch(proxyUrl);
         if (response.ok) return await response.text();
     } catch (e) { 
-        console.warn('HTML Proxy 2 failed', e); 
+        console.warn('HTML Proxy 1 failed', e); 
     }
   
-    // 3. Try codetabs (Good for China sometimes)
+    // 2. Try codetabs
     try {
         const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`;
         const response = await fetch(proxyUrl);
         if (response.ok) return await response.text();
     } catch (e) {
-        console.warn('HTML Proxy 3 failed', e);
+        console.warn('HTML Proxy 2 failed', e);
     }
     
     return null;
@@ -97,40 +69,21 @@ const fetchHtmlWithProxy = async (url: string): Promise<string | null> => {
 const fetchDoubanJson = async (type: string, tag: string, limit = 12): Promise<VodItem[]> => {
     const doubanUrl = `https://movie.douban.com/j/search_subjects?type=${type}&tag=${encodeURIComponent(tag)}&sort=recommend&page_limit=${limit}&page_start=0`;
     try {
-        // Use local proxy first for Douban to avoid rate limits/blocks if server IP is clean
-        const proxyUrl = `proxy.php?url=${encodeURIComponent(doubanUrl)}`;
-        const res = await fetch(proxyUrl);
-        if (res.ok) {
-            const data = await res.json();
-            if (data.subjects && Array.isArray(data.subjects)) {
-                return data.subjects.map((item: any) => ({
-                    vod_id: item.id, // Douban ID
-                    vod_name: item.title,
-                    vod_pic: item.cover,
-                    vod_score: item.rate,
-                    type_name: tag, // Use the tag as category
-                    source: 'douban'
-                }));
-            }
-        }
-    } catch (e) {
         // Fallback to public
-        try {
-            const publicProxy = `https://corsproxy.io/?${encodeURIComponent(doubanUrl)}`;
-            const res = await fetch(publicProxy);
-            if(res.ok) {
-                const data = await res.json();
-                if (data.subjects) return data.subjects.map((item: any) => ({
-                    vod_id: item.id,
-                    vod_name: item.title,
-                    vod_pic: item.cover,
-                    vod_score: item.rate,
-                    type_name: tag,
-                    source: 'douban'
-                }));
-            }
-        } catch(ex) { console.warn(`Douban fetch failed for ${tag}`, ex); }
-    }
+        const publicProxy = `https://corsproxy.io/?${encodeURIComponent(doubanUrl)}`;
+        const res = await fetch(publicProxy);
+        if(res.ok) {
+            const data = await res.json();
+            if (data.subjects) return data.subjects.map((item: any) => ({
+                vod_id: item.id,
+                vod_name: item.title,
+                vod_pic: item.cover,
+                vod_score: item.rate,
+                type_name: tag,
+                source: 'douban'
+            }));
+        }
+    } catch(ex) { console.warn(`Douban fetch failed for ${tag}`, ex); }
     return [];
 };
 
@@ -195,7 +148,7 @@ export const fetchDoubanData = async (keyword: string, doubanId?: string | numbe
     if (!targetId || targetId === '0') {
         const searchUrl = `https://movie.douban.com/j/subject_suggest?q=${encodeURIComponent(keyword)}`;
         try {
-            const proxyUrl = `proxy.php?url=${encodeURIComponent(searchUrl)}`;
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(searchUrl)}`;
             const searchRes = await fetch(proxyUrl);
             if (searchRes.ok) {
                 const searchData = await searchRes.json();
@@ -366,7 +319,7 @@ export const fetchDoubanData = async (keyword: string, doubanId?: string | numbe
 export const getDoubanPoster = async (keyword: string): Promise<string | null> => {
     const searchUrl = `https://movie.douban.com/j/subject_suggest?q=${encodeURIComponent(keyword)}`;
     try {
-        const proxyUrl = `proxy.php?url=${encodeURIComponent(searchUrl)}`;
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(searchUrl)}`;
         const res = await fetch(proxyUrl);
         if (res.ok) {
             const data = await res.json();
